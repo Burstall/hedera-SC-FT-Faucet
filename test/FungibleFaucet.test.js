@@ -141,6 +141,21 @@ describe('Deployment: ', function() {
 
 });
 
+describe('Access Checks: ', function() {
+	it('Alice cant call sensitive methods', async function() {
+
+		// add boost
+		// remove boost
+		// reset serial timestamp
+		expect.fail(0, 1, 'Not implemented');
+	});
+
+	it('Alice can use getters', async function() {
+		expect.fail(0, 1, 'Not implemented');
+	});
+
+});
+
 describe('Interaction: ', function() {
 	it('Bob draws faucet for single NFT held', async function() {
 		expect.fail(0, 1, 'Not implemented');
@@ -178,6 +193,25 @@ describe('Interaction: ', function() {
 		expect.fail(0, 1, 'Not implemented');
 	});
 
+	it('Operator adds boost serials for Bob and one of their own', async function() {
+		expect.fail(0, 1, 'Not implemented');
+	});
+
+	it('Bob claims faucet for boosted single serial', async function() {
+		expect.fail(0, 1, 'Not implemented');
+	});
+
+	it('Operator draws faucet for multiple NFTs (partially boosted)', async function() {
+		expect.fail(0, 1, 'Not implemented');
+	});
+
+	it('Operator removes boost serials', async function() {
+		expect.fail(0, 1, 'Not implemented');
+	});
+
+	it('Operator can reset serial timestamp', async function() {
+		expect.fail(0, 1, 'Not implemented');
+	});
 
 	after('Retrieve any hbar spent', async function() {
 		const [, aliceHbarBal] = await getAccountBalance(aliceId);
@@ -389,9 +423,13 @@ async function contractDeployFcn(bytecode, gasLim) {
 		.setGas(gasLim)
 		.setConstructorParameters(
 			new ContractFunctionParameters()
-				.addAddress(tokenId.toSolidityAddress())
 				.addAddress(aliceId.toSolidityAddress())
-				.addAddress(nftTokenId.toSolidityAddress()),
+				.addAddress(tokenId.toSolidityAddress())
+				.addAddress(nftTokenId.toSolidityAddress())
+				.addUint256(1)
+				.addUint256(0)
+				.addUint256(1)
+				.addUint8(1),
 		);
 	const contractCreateSubmit = await contractCreateTx.execute(client);
 	const contractCreateRx = await contractCreateSubmit.getReceipt(client);
