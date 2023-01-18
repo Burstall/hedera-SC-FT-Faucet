@@ -55,6 +55,7 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 		uint256 minTime,
 		uint8 maxTimeUnits
 	) {
+		require(maxTimeUnits > 0, "min 1 period");
 		_fungibleSCT = sct;
 		_fungibleToken = fungible;
 		_claimNFT = claimNFT;
@@ -62,6 +63,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 		_boostPercentage = boostPercentage;
 		_minTime = minTime;
 		_maxTimeUnits = maxTimeUnits;
+		// deploy paused by default
+		_paused = true;
 	}
 
 	/// @param sct new Lazy SC Treasury address
@@ -74,9 +77,19 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
     	sct = _fungibleSCT;
     }
 
-	/// @param fungible new Lazy FT address
+	/// @param fungible new FT address
     function updateFungibleToken(address fungible) external onlyOwner {
         _fungibleToken = fungible;
+    }
+
+	/// @return nft the address set as NFT claim token
+    function getClaimToken() external view returns (address nft) {
+    	nft = _claimNFT;
+    }
+
+	/// @param nft new NFT address
+    function updateClaimToken(address nft) external onlyOwner {
+        _claimNFT = nft;
     }
 
 	/// @return fungible the address set for Lazy FT token
@@ -134,7 +147,7 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 
 	// hard limit on max time < 4 weeks to avoid monster claims / transtion issues
 	/// @param maxTimeUnits the number of claimable units
-    function updateMaxTime(uint8 maxTimeUnits) external onlyOwner {
+    function updateMaxTimeUnits(uint8 maxTimeUnits) external onlyOwner {
 		require(maxTimeUnits > 0, "Min claim 1 unit");
 		require((_minTime * maxTimeUnits) < 4 weeks, "Window too long");
         _maxTimeUnits = maxTimeUnits;
@@ -203,7 +216,7 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 	/// @param timestamp the time (seconds) to set it to
 	function resetSerialTimestamp(uint[] calldata serials, uint256 timestamp) external onlyOwner {
 		require(serials.length <= type(uint8).max, "Too many serials");
-		require(timestamp <= block.timestamp, "Reset in past");
+		require(timestamp <= block.timestamp, "Reset to the past");
 		for (uint8 i = 0; i < serials.length; i++) {
 			_serialToTimestampMap.set(serials[i], timestamp);
 		}
@@ -214,27 +227,38 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 	// helper method to allow a user to query how many FT they would claim
 	// not sure the point of calling it as better to claim but adding in for good measure
 	/// @param serials a uint array of token serials 
-	function getClaimableAmount(uint[] calldata serials) external returns (uint256 timestamp) {
+	/// @return amt the claimable amount
+	function getClaimableAmount(uint[] calldata serials) external returns (uint256 amt) {
 		require(!_paused, "Faucet is paused");
-		return calcDraw(serials, true);
+		require(serials.length <= type(uint8).max, "Too many serials");
+		return calcDraw(serials, true, false);
 	}
 
-	function calcDraw(uint[] calldata serials, bool readOnly) internal returns (uint256 amt) {
+	// helper method to allow a user to query how many FT for a given token 
+	/// @param serials a uint array of token serials 
+	/// @return amt the claimable amount
+	function getClaimableForTokens(uint[] calldata serials) external returns (uint256 amt) {
+		require(!_paused, "Faucet is paused");
+		require(serials.length <= type(uint8).max, "Too many serials");
+		return calcDraw(serials, true, true);
+	}
+
+	function calcDraw(uint[] calldata serials, bool readOnly, bool ignoreOwner) internal returns (uint256 amt) {
 		for (uint8 i = 0; i < serials.length; i++) {
 			//check user owns the serial
-			if(IERC721(_claimNFT).ownerOf(serials[i]) == msg.sender) {
+			if(IERC721(_claimNFT).ownerOf(serials[i]) == msg.sender || ignoreOwner) {
 				uint startTime;
 				uint elapsedUnits;
 				// check when serial last claimed
 				(bool found, uint timestamp) = _serialToTimestampMap.tryGet(serials[i]);
 				startTime = found ? Math.max(_startTime, timestamp) : _startTime;
 				// calc elapsed time
-				elapsedUnits = SafeMath.div(block.timestamp - startTime, _minTime);
+				elapsedUnits = Math.min(SafeMath.div(block.timestamp - startTime, _minTime), _maxTimeUnits);
 				// now update the timestamps as needed
 				if (!readOnly && elapsedUnits > 0) {
 					// be kind if claim comes during partial time period
 					if (elapsedUnits < _maxTimeUnits) {
-						// instead push ther timestamp forward by the units claimed saving partial progress
+						// instead push the timestamp forward by the units claimed saving partial progress
 						_serialToTimestampMap.set(serials[i], startTime + SafeMath.mul(_minTime, elapsedUnits));
 					} else {
 						// if outside max period reset counter to current block time
@@ -245,18 +269,18 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 				uint boostPerc = _boostSerials.contains(serials[i]) ? _boostPercentage + 100 : 100;
 				
 				// add the claimable amount
-				amt += SafeMath.mul(elapsedUnits, SafeMath.div(SafeMath.mul(_dailyAmt, boostPerc), 100));
+				amt += SafeMath.div(SafeMath.mul(elapsedUnits, SafeMath.mul(_dailyAmt, boostPerc)), 100);
 			}
 		}
 	}
 
 	// pull the faucet for up to 256 serials at a time
-	function pullFaucetHTS(uint[] calldata serials) external nonReentrant returns (int responseCode) {
+	function pullFaucetHTS(uint[] calldata serials) external nonReentrant returns (uint amt) {
 		require(!_paused, "Faucet is paused");
 		require(serials.length <= type(uint8).max, "Too many serials");
-		uint256 amt = calcDraw(serials, false);
-		require(amt > 0, "Nothing to claim");
-        responseCode = this.transferFrom(
+		amt = calcDraw(serials, false, false);
+		if (amt == 0) return 0;
+        int responseCode = this.transferFrom(
             _fungibleToken,
             _fungibleSCT,
             msg.sender,

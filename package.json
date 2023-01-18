@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.js",
+	"test": "npx hardhat test",
     "logs": "node scripts/getContractLogs.js",
     "solhint": "solhint -f table contracts/*.sol"
   },
