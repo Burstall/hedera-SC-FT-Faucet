@@ -1,1 +1,5 @@
-#Faucet test for $LAZT in test
+#Faucet SC tester
+
+npm install
+
+npm run test

@@ -266,12 +266,12 @@ describe('Access Checks: ', function() {
 
 		// get min time
 		const uintMinTime = await getSetting('getMinTime', 'minTime');
-		expect(Number(uintMinTime) == 3).to.be.true;
+		expect(Number(uintMinTime) == 5).to.be.true;
 
 		// get max time (& units)
 		const [uint8MaxTimeUnits, uint256MaxTime] = await getSettings('getMaxTimeUnits', 'maxTimeUnits', 'maxTime');
 		expect(Number(uint8MaxTimeUnits) == 1).to.be.true;
-		expect(Number(uint256MaxTime) == 3).to.be.true;
+		expect(Number(uint256MaxTime) == 5).to.be.true;
 
 		// get boost serials
 		const intArraySerials = await getSetting('getBoostSerials', 'boostSerials');
@@ -285,7 +285,7 @@ describe('Interaction: ', function() {
 		client.setOperator(operatorId, operatorKey);
 		const result = await useSetterBool('updatePauseStatus', false);
 		expect(result == 'SUCCESS').to.be.true;
-		await sleep(3000);
+		await sleep(4500);
 	});
 
 	it('Bob draws faucet for single NFT held', async function() {
@@ -304,28 +304,17 @@ describe('Interaction: ', function() {
 
 		const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [2, 3]);
 		expect(Number(uintAmtClaim[0]) == 2).to.be.true;
-		const [, auintAmtCalc] = await useSetterUint256Array('getClaimableAmount', [2, 3]);
-		console.log('a1st fail', auintAmtCalc[0]);
-		const [, auintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [2, 3]);
-		console.log('a2nd fail', auintAmtClaim[0]);
 	});
 
 	it('Operator fails to pull faucet a second time for same NFTs', async function() {
 		client.setOperator(operatorId, operatorKey);
-		const [, uintAmtCalc] = await useSetterUint256Array('getClaimableAmount', [2, 3]);
-		console.log('1st fail', uintAmtCalc[0]);
 		const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [2, 3]);
-		console.log('2nd fail', uintAmtClaim[0]);
 		expect(Number(uintAmtClaim[0]) == 0).to.be.true;
 	});
 
 	it('Operator gets partial success pulling faucet with one unclaimed and one claimed', async function() {
 		client.setOperator(operatorId, operatorKey);
-		// sleep to ensure there is a reward to claim
-		await sleep(1000);
-		await useSetterUint256Array('pullFaucetHTS', [3]);
 		const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [3, 4]);
-		console.log('partial fail', uintAmtClaim[0]);
 		expect(Number(uintAmtClaim[0]) == 1).to.be.true;
 	});
 
@@ -349,28 +338,26 @@ describe('Interaction: ', function() {
 	it('Bob claims faucet for single NFT held across multiple time periods', async function() {
 		client.setOperator(operatorId, operatorKey);
 		// set the contract for multiple periods at 2 second
-		let [result] = await useSetterUints('updateMinTime', 1);
+		let [result] = await useSetterUints('updateMinTime', 2);
 		expect(result == 'SUCCESS').to.be.true;
 
 		[result] = await useSetteUint8s('updateMaxTimeUnits', 3);
 		expect(result == 'SUCCESS').to.be.true;
 
+		// reset timestamp to the current time for bob
+		[result] = await useResetSerialTimestamp('resetSerialTimestamp', [1], Math.floor((new Date().getTime()) / 1000));
+		expect(result == 'SUCCESS').to.be.true;
+
 		client.setOperator(bobId, bobPK);
 		// claim to reset timer
-		const [, claim] = await useSetterUint256Array('pullFaucetHTS', [1]);
-		console.log('pull to attempt reset', Number(claim[0]));
-		let [, uintAmtCalc] = await useSetterUint256Array('getClaimableForTokens', [1]);
-		console.log('stage check', Number(uintAmtCalc[0]));
-		expect(Number(uintAmtCalc[0]) == 0).to.be.true;
-		await sleep(1000);
-		[, uintAmtCalc] = await useSetterUint256Array('getClaimableAmount', [1]);
-		console.log('single claim multi period', Number(uintAmtCalc[0]));
+		await useSetterUint256Array('pullFaucetHTS', [1]);
+		await sleep(3500);
+		const [, uintAmtCalc] = await useSetterUint256Array('getClaimableAmount', [1]);
 		expect(Number(uintAmtCalc[0]) == 2).to.be.true;
 
 		// potential race condition...hence checking just >= claim calc
 		const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [1]);
 		expect(Number(uintAmtClaim[0]) >= Number(uintAmtCalc[0])).to.be.true;
-		console.log('Single Claim (calc/claim):', uintAmtCalc[0], uintAmtClaim[0]);
 	});
 
 	it('Operator draws faucet for multiple NFTs across multiple time periods', async function() {
@@ -383,8 +370,11 @@ describe('Interaction: ', function() {
 
 	it('Bob claims faucet for single NFT held > max accrual length', async function() {
 		client.setOperator(operatorId, operatorKey);
+		// move timer to 1 second to speed it up
+		const [result] = await useSetterUints('updateMinTime', 1);
+		expect(result == 'SUCCESS').to.be.true;
 		// sleep for whole window to max claim
-		await sleep(3500);
+		await sleep(3000);
 		client.setOperator(bobId, bobPK);
 		const [, uintAmtCalc] = await useSetterUint256Array('getClaimableAmount', [1]);
 		expect(Number(uintAmtCalc[0]) == 3).to.be.true;
@@ -456,7 +446,7 @@ describe('Interaction: ', function() {
 		// also tests boost removal by claiming previously boosted serial
 		const histricTimeInSecs = Math.floor((new Date().getTime()) / 1000) - 10;
 
-		[result] = await useResetSerialTimestamp('', [1, 2, 3], histricTimeInSecs);
+		[result] = await useResetSerialTimestamp('resetSerialTimestamp', [1, 2, 3], histricTimeInSecs);
 		expect(result == 'SUCCESS').to.be.true;
 
 		client.setOperator(bobId, bobPK);
@@ -701,7 +691,7 @@ async function contractDeployFcn(bytecode, gasLim) {
 				.addAddress(nftTokenId.toSolidityAddress())
 				.addUint256(1)
 				.addUint256(0)
-				.addUint256(3)
+				.addUint256(5)
 				.addUint8(1),
 		);
 	const contractCreateSubmit = await contractCreateTx.execute(client);

@@ -11,11 +11,10 @@ import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableMap.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
+contract FungibleFaucet is HederaTokenService, Ownable {
 	using EnumerableMap for EnumerableMap.UintToUintMap;
 	using EnumerableSet for EnumerableSet.UintSet;
 
@@ -36,8 +35,9 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
         string msgType,
         address indexed fromAddress,
 		address indexed toAddress,
-        uint256 amount
-    );
+        uint256 amount,
+		uint256 timestamp
+	);
 
 	/// @param sct the address from which the faucet draws
 	/// @param fungible the address for the fungible token drawn
@@ -122,7 +122,7 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 	function updatePauseStatus(bool paused) external onlyOwner returns (bool changed) {
 		changed = _paused == paused ? false : true;
 		if (changed) {
-			emit FaucetMessage(paused ? "PAUSED" : "UNPAUSED", msg.sender, address(0), paused ? 1 : 0);
+			emit FaucetMessage(paused ? "PAUSED" : "UNPAUSED", msg.sender, address(0), paused ? 1 : 0, block.timestamp);
 			if (!paused) {
 				_startTime = block.timestamp;
 			}
@@ -169,7 +169,7 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 		uint counter;
         for (uint8 i = 0; i < serials.length; i++) {
 			if(_boostSerials.add(serials[i])) {
-				serialsAdded = string.concat(serialsAdded, ",", Strings.toString(serials[i]));
+				serialsAdded = string.concat(serialsAdded, Strings.toString(serials[i]), ",");
 				counter++;
 			}
 		}
@@ -177,7 +177,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
             serialsAdded,
             msg.sender,
             address(0),
-            counter
+            counter,
+			block.timestamp
         );
     }
 
@@ -186,11 +187,11 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
     function removeBoostSerials(uint[] calldata serials) external onlyOwner {
 		require(serials.length <= type(uint8).max, "Too many serials");
 
-		string memory serialsRemoved = "REMOVED BOOST SERIALS";
+		string memory serialsRemoved = "REMOVED BOOST SERIALS: ";
 		uint counter;
         for (uint8 i = 0; i < serials.length; i++) {
 			if(_boostSerials.remove(serials[i])) {
-				serialsRemoved = string.concat(serialsRemoved, ",", Strings.toString(serials[i]));
+				serialsRemoved = string.concat(serialsRemoved, Strings.toString(serials[i]), ",");
 				counter++;
 			}
 		}
@@ -198,7 +199,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
             serialsRemoved,
             msg.sender,
             address(0),
-            counter
+            counter,
+			block.timestamp
         );
     }
 
@@ -275,9 +277,11 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
 	}
 
 	// pull the faucet for up to 256 serials at a time
-	function pullFaucetHTS(uint[] calldata serials) external nonReentrant returns (uint amt) {
+	function pullFaucetHTS(uint[] calldata serials) external returns (uint amt) {
 		require(!_paused, "Faucet is paused");
 		require(serials.length <= type(uint8).max, "Too many serials");
+		// calc the amount to claim
+		// updates timestamps on call ahead of transfer to prevent rentrancy attack
 		amt = calcDraw(serials, false, false);
 		if (amt == 0) return 0;
         int responseCode = this.transferFrom(
@@ -291,7 +295,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
             "Transfer with HTS",
             _fungibleSCT,
             msg.sender,
-			amt
+			amt,
+			block.timestamp
         );
 
         if (responseCode != HederaResponseCodes.SUCCESS) {
@@ -313,7 +318,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
             "Hbar Transfer",
 			address(this),
             receiverAddress,
-            amount
+            amount,
+			block.timestamp
         );
     }
 
@@ -323,7 +329,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
             "Receive",
 			address(this),
             msg.sender,
-            msg.value
+            msg.value,
+			block.timestamp
         );
     }
 
@@ -333,7 +340,8 @@ contract FungibleFaucet is HederaTokenService, Ownable, ReentrancyGuard {
             "Fallback",
 			address(this),
             msg.sender,
-            msg.value
+            msg.value,
+			block.timestamp
         );
     }
 }
