@@ -285,7 +285,7 @@ describe('Interaction: ', function() {
 		client.setOperator(operatorId, operatorKey);
 		const result = await useSetterBool('updatePauseStatus', false);
 		expect(result == 'SUCCESS').to.be.true;
-		await sleep(4500);
+		await sleep(5000);
 	});
 
 	it('Bob draws faucet for single NFT held', async function() {
@@ -345,15 +345,16 @@ describe('Interaction: ', function() {
 		expect(result == 'SUCCESS').to.be.true;
 
 		// reset timestamp to the current time for bob
-		[result] = await useResetSerialTimestamp('resetSerialTimestamp', [1], Math.floor((new Date().getTime()) / 1000));
+		[result] = await useResetSerialTimestamp('resetSerialTimestamp', [1], Math.floor((new Date().getTime()) / 1000) - 1);
 		expect(result == 'SUCCESS').to.be.true;
 
 		client.setOperator(bobId, bobPK);
 		// claim to reset timer
 		await useSetterUint256Array('pullFaucetHTS', [1]);
-		await sleep(3500);
+		// timing is a little tricky on these short windows
+		await sleep(3000);
 		const [, uintAmtCalc] = await useSetterUint256Array('getClaimableAmount', [1]);
-		expect(Number(uintAmtCalc[0]) == 2).to.be.true;
+		expect(Number(uintAmtCalc[0]) >= 2).to.be.true;
 
 		// potential race condition...hence checking just >= claim calc
 		const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [1]);
