@@ -235,7 +235,13 @@ describe('Access Checks: ', function() {
 		catch (err) {
 			errorCount++;
 		}
-		expect(errorCount).to.be.equal(12);
+		try {
+			await useSetter('disableUpdates');
+		}
+		catch (err) {
+			errorCount++;
+		}
+		expect(errorCount).to.be.equal(13);
 	});
 
 	it('Alice can use getters', async function() {
@@ -463,6 +469,80 @@ describe('Interaction: ', function() {
 
 		[, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [2, 3, 4]);
 		expect(Number(uintAmtClaim[0]) == 30).to.be.true;
+	});
+
+	it('Operator turns off updates (other than boosts / timer reset) and tests access', async function() {
+		client.setOperator(operatorId, operatorKey);
+		let result = await useSetter('disableUpdates');
+		expect(result == 'SUCCESS').to.be.true;
+
+		[result] = await useSetterUint256Array('addBoostSerials', [1]);
+		expect(result == 'SUCCESS').to.be.true;
+
+		// extra test for removing serials not in the list
+		[result] = await useSetterUint256Array('removeBoostSerials', [1, 10]);
+		expect(result == 'SUCCESS').to.be.true;
+
+		const histricTimeInSecs = Math.floor((new Date().getTime()) / 1000) - 10;
+		[result] = await useResetSerialTimestamp('resetSerialTimestamp', [1, 2, 3], histricTimeInSecs);
+		expect(result == 'SUCCESS').to.be.true;
+
+		let errorCount = 0;
+
+		// update FT SCT
+		try {
+			await useSetterAddress('updateSCT', aliceId);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		// update FT
+		try {
+			await useSetterAddress('updateFungibleToken', tokenId);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		// update claim NFT
+		try {
+			await useSetterAddress('updateClaimToken', nftTokenId);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		// update daily amount
+		try {
+			await useSetterUints('updateDailyAmount', 12);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		// update boost multipler
+		try {
+			await useSetterUints('updateBoostMultiplier', 75);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		// update min Time
+		try {
+			await useSetterUints('updateMinTime', 360);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		// update max time units
+		try {
+			await useSetteUint8s('updateMaxTimeUnits', 2);
+		}
+		catch (err) {
+			errorCount++;
+		}
+		expect(errorCount == 7).to.be.true;
+
+		// test pause to finish
+		result = await useSetterBool('updatePauseStatus', true);
+		expect(result == 'SUCCESS').to.be.true;
 	});
 
 	after('Retrieve any hbar spent', async function() {
@@ -738,6 +818,20 @@ function decodeFunctionResult(functionName, resultAsBytes) {
 	const resultHex = '0x'.concat(Buffer.from(resultAsBytes).toString('hex'));
 	const result = web3.eth.abi.decodeParameters(functionParameters, resultHex);
 	return result;
+}
+
+/**
+ * Generic setter caller
+ * @param {string} fcnName
+ * @param {boolean} value
+ * @param {number=} gasLim
+ * @returns {string}
+ */
+// eslint-disable-next-line no-unused-vars
+async function useSetter(fcnName, gasLim = 200000) {
+	const params = new ContractFunctionParameters();
+	const [setterAddressRx] = await contractExecuteFcn(contractId, gasLim, fcnName, params);
+	return setterAddressRx.status.toString();
 }
 
 /**

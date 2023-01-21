@@ -30,6 +30,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 	EnumerableMap.UintToUintMap private _serialToTimestampMap;
 	EnumerableSet.UintSet private _boostSerials;
 	bool private _paused;
+	bool private _updateable;
 
 	event FaucetMessage(
         string msgType,
@@ -65,10 +66,12 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 		_maxTimeUnits = maxTimeUnits;
 		// deploy paused by default
 		_paused = true;
+		_updateable = true;
 	}
 
 	/// @param sct new Lazy SC Treasury address
     function updateSCT(address sct) external onlyOwner {
+		require(_updateable, "not updateable");
         _fungibleSCT = sct;
     }
 
@@ -79,6 +82,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 
 	/// @param fungible new FT address
     function updateFungibleToken(address fungible) external onlyOwner {
+		require(_updateable, "not updateable");
         _fungibleToken = fungible;
     }
 
@@ -89,6 +93,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 
 	/// @param nft new NFT address
     function updateClaimToken(address nft) external onlyOwner {
+		require(_updateable, "not updateable");
         _claimNFT = nft;
     }
 
@@ -99,6 +104,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 
 	/// @param dailyAmt the amount to draw daily
     function updateDailyAmount(uint256 dailyAmt) external onlyOwner {
+		require(_updateable, "not updateable");
         _dailyAmt = dailyAmt;
     }
 
@@ -109,6 +115,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 
 	/// @param boost the new boosdt multiplier (as %)
     function updateBoostMultiplier(uint256 boost) external onlyOwner {
+		require(_updateable, "not updateable");
         _boostPercentage = boost;
     }
 
@@ -137,6 +144,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 
 	/// @param minTime the new boosdt multiplier (as %)
     function updateMinTime(uint256 minTime) external onlyOwner {
+		require(_updateable, "not updateable");
         _minTime = minTime;
     }
 
@@ -148,6 +156,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 	// hard limit on max time < 4 weeks to avoid monster claims / transtion issues
 	/// @param maxTimeUnits the number of claimable units
     function updateMaxTimeUnits(uint8 maxTimeUnits) external onlyOwner {
+		require(_updateable, "not updateable");
 		require(maxTimeUnits > 0, "Min claim 1 unit");
 		require((_minTime * maxTimeUnits) < 4 weeks, "Window too long");
         _maxTimeUnits = maxTimeUnits;
@@ -160,8 +169,13 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 		maxTime = _maxTimeUnits * _minTime;
     }
 
+	function disableUpdates() external onlyOwner {
+		_updateable = false;
+		emit FaucetMessage("UPDATES DISABLED", msg.sender, address(0), 0, block.timestamp);
+	}
+
 	// Add an array of serials for boosts (256 at a time)
-    /// @param serials the newss address to add
+    /// @param serials the serials to add to boost list
     function addBoostSerials(uint[] calldata serials) external onlyOwner {
 		require(serials.length <= type(uint8).max, "Too many serials");
 
@@ -183,7 +197,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
     }
 
 	// Remove an array of serials for boosts (256 at a time)
-    /// @param serials the newss address to add
+    /// @param serials the serials to remove from boost list
     function removeBoostSerials(uint[] calldata serials) external onlyOwner {
 		require(serials.length <= type(uint8).max, "Too many serials");
 
