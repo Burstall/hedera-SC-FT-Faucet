@@ -12,7 +12,6 @@ require('dotenv').config();
 const fs = require('fs');
 const Web3 = require('web3');
 const web3 = new Web3();
-const readlineSync = require('readline-sync');
 let abi;
 
 // Get operator from .env file
@@ -32,19 +31,9 @@ const main = async () => {
 		return;
 	}
 
-	if (getArgFlag('h')) {
-		console.log('Usage: pullFaucet.js -[eth|hts]');
-		return;
-	}
 
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
-
-	const proceed = readlineSync.keyInYNStrict('Do you want to pull the faucet?');
-	if (!proceed) {
-		console.log('User Aborted');
-		return;
-	}
 
 	if (env.toUpperCase() == 'TEST') {
 		client = Client.forTestnet();
@@ -66,26 +55,24 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [98]);
-	console.log('Claimed:', Number(uintAmtClaim[0]));
+	const paused = await useSetterBool('updatePauseStatus', false);
+	console.log('Tx:', paused);
 };
-
 
 /**
  * Generic setter caller
  * @param {string} fcnName
- * @param {number[]} ints
+ * @param {boolean} value
  * @returns {string}
  */
 // eslint-disable-next-line no-unused-vars
-async function useSetterUint256Array(fcnName, ints) {
-	const gasLim = 8000000;
-	const params = new ContractFunctionParameters().addUint256Array(ints);
-
-	const [setterIntArrayRx, setterResult] = await contractExecuteFcn(contractId, gasLim, fcnName, params);
-	return [setterIntArrayRx.status.toString(), setterResult];
+async function useSetterBool(fcnName, value) {
+	const gasLim = 200000;
+	const params = new ContractFunctionParameters()
+		.addBool(value);
+	const [setterAddressRx, , ] = await contractExecuteFcn(contractId, gasLim, fcnName, params);
+	return setterAddressRx.status.toString();
 }
-
 
 /**
  * Helper function for calling the contract methods
@@ -178,16 +165,6 @@ function encodeFunctionCall(functionName, parameters) {
 	const functionAbi = abi.find((func) => func.name === functionName && func.type === 'function');
 	const encodedParametersHex = web3.eth.abi.encodeFunctionCall(functionAbi, parameters).slice(2);
 	return Buffer.from(encodedParametersHex, 'hex');
-}
-
-function getArgFlag(arg) {
-	const customIndex = process.argv.indexOf(`-${arg}`);
-
-	if (customIndex > -1) {
-		return true;
-	}
-
-	return false;
 }
 
 main()

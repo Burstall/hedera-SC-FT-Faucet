@@ -17,9 +17,13 @@ const operatorKey = PrivateKey.fromString(process.env.PRIVATE_KEY);
 const operatorId = AccountId.fromString(process.env.ACCOUNT_ID);
 const contractName = process.env.CONTRACT_NAME ?? null;
 
-const lazyContractId = ContractId.fromString(process.env.LAZY_CONTRACT);
-const lazyTokenId = TokenId.fromString(process.env.LAZY_TOKEN);
-const dailyLazy = process.env.DAILY_LAZY || 5;
+const ftSCT_ContractId = ContractId.fromString(process.env.SCT_CONTRACT);
+const ftTokenId = TokenId.fromString(process.env.TOKEN_ID);
+const claimTokenId = TokenId.fromString(process.env.CLAIM_TOKEN);
+const dailyAmt = process.env.DAILY_AMT || 5;
+const boostPercentage = process.env.BOOST_PERCENTAGE || 100;
+const minTime = process.env.MIN_TIME || 43200;
+const maxTimeUnits = process.env.MAX_TIME_UNITS || 12;
 
 const env = process.env.ENVIRONMENT ?? null;
 
@@ -32,9 +36,13 @@ async function contractDeployFcn(bytecode, gasLim) {
 		.setAutoRenewAccountId(operatorId)
 		.setConstructorParameters(
 			new ContractFunctionParameters()
-				.addAddress(lazyContractId.toSolidityAddress())
-				.addAddress(lazyTokenId.toSolidityAddress())
-				.addUint256(dailyLazy),
+				.addAddress(ftSCT_ContractId.toSolidityAddress())
+				.addAddress(ftTokenId.toSolidityAddress())
+				.addAddress(claimTokenId.toSolidityAddress())
+				.addUint256(dailyAmt)
+				.addUint256(boostPercentage)
+				.addUint256(minTime)
+				.addUint8(maxTimeUnits),
 		);
 	const contractCreateSubmit = await contractCreateTx.execute(client);
 	const contractCreateRx = await contractCreateSubmit.getReceipt(client);
@@ -50,9 +58,13 @@ async function contractCreateFcn(bytecodeFileId, gasLim) {
 		.setAutoRenewAccountId(operatorId)
 		.setConstructorParameters(
 			new ContractFunctionParameters()
-				.addAddress(lazyContractId.toSolidityAddress())
-				.addAddress(lazyTokenId.toSolidityAddress())
-				.addUint256(dailyLazy),
+				.addAddress(ftSCT_ContractId.toSolidityAddress())
+				.addAddress(ftTokenId.toSolidityAddress())
+				.addAddress(claimTokenId.toSolidityAddress())
+				.addUint256(dailyAmt)
+				.adduint256(boostPercentage)
+				.adduint256(minTime)
+				.addUint8(maxTimeUnits),
 		);
 	const contractCreateSubmit = await contractCreateTx.execute(client);
 	const contractCreateRx = await contractCreateSubmit.getReceipt(client);
@@ -70,9 +82,13 @@ const main = async () => {
 
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
-	console.log('\n-Using LSCT:', lazyContractId.toString());
-	console.log('\n-Using LAZY Token:', lazyTokenId.toString());
-	console.log('\n-Using Daily LAZY:', dailyLazy);
+	console.log('\n-Using SCT:', ftSCT_ContractId.toString());
+	console.log('\n-Using FT Token:', ftTokenId.toString());
+	console.log('\n-Using NFT Claim Token:', claimTokenId.toString());
+	console.log('\n-Using Daily FT Amount:', dailyAmt);
+	console.log('\n-Using Min Time (secs):', minTime);
+	console.log('\n-Using Max Time units:', maxTimeUnits);
+	console.log('\n-Using Boost Perc:', boostPercentage);
 
 	const proceed = readlineSync.keyInYNStrict('Do you want to deploy the faucet?');
 
