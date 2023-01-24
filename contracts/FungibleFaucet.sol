@@ -294,6 +294,10 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 	function pullFaucetHTS(uint[] calldata serials) external returns (uint amt) {
 		require(!_paused, "Faucet is paused");
 		require(serials.length <= type(uint8).max, "Too many serials");
+		
+		// check if user has associated token
+		if(IERC721(_fungibleToken).balanceOf(msg.sender) == 0) associateToken(msg.sender, _fungibleToken);
+
 		// calc the amount to claim
 		// updates timestamps on call ahead of transfer to prevent rentrancy attack
 		amt = calcDraw(serials, false, false);
