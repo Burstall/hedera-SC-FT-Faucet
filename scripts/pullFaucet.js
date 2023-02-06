@@ -27,20 +27,24 @@ let client;
 
 // check-out the deployed script - test read-only method
 const main = async () => {
-	if (contractName === undefined || contractName == null) {
-		console.log('Environment required, please specify CONTRACT_NAME for ABI in the .env file');
+	const args = process.argv.slice(2);
+	if (args.length != 1 || getArgFlag('h')) {
+		console.log('Usage: pullFaucet.js X,Y,Z');
+		console.log('		X,Y,Z are the serials to claim');
 		return;
 	}
 
-	if (getArgFlag('h')) {
-		console.log('Usage: pullFaucet.js -[eth|hts]');
+	const serials = args[0].split(',');
+
+	if (contractName === undefined || contractName == null) {
+		console.log('Environment required, please specify CONTRACT_NAME for ABI in the .env file');
 		return;
 	}
 
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
 
-	const proceed = readlineSync.keyInYNStrict('Do you want to pull the faucet?');
+	const proceed = readlineSync.keyInYNStrict('Do you want to pull the faucet for serials: ' + serials + '?');
 	if (!proceed) {
 		console.log('User Aborted');
 		return;
@@ -66,7 +70,7 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', [98]);
+	const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', serials);
 	console.log('Claimed:', Number(uintAmtClaim[0]));
 };
 
@@ -79,7 +83,7 @@ const main = async () => {
  */
 // eslint-disable-next-line no-unused-vars
 async function useSetterUint256Array(fcnName, ints) {
-	const gasLim = 8000000;
+	const gasLim = 220000;
 	const params = new ContractFunctionParameters().addUint256Array(ints);
 
 	const [setterIntArrayRx, setterResult] = await contractExecuteFcn(contractId, gasLim, fcnName, params);
