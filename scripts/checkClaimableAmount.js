@@ -67,7 +67,7 @@ const main = async () => {
 
 	// 498, 98, 495, 494, 493, 491, 490, 489, 488 , 482, 481
 	// 484, 485, 486, 487, 488, 489, 490, 491, 492
-	const queryResult = await checkClaimable('getClaimableAmount', [482, 483, 485, 486, 487, 488, 489, 490, 491, 492]);
+	const queryResult = await checkClaimable('getClaimableAmount', [3, 4, 5, 6]);
 	console.log('Claimable:', Number(queryResult['amt']));
 };
 
