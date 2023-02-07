@@ -262,7 +262,7 @@ contract FungibleFaucet is HederaTokenService, Ownable {
 	function calcDraw(uint[] calldata serials, bool readOnly, bool ignoreOwner) internal returns (uint256 amt) {
 		for (uint8 i = 0; i < serials.length; i++) {
 			//check user owns the serial
-			if(IERC721(_claimNFT).ownerOf(serials[i]) == msg.sender || ignoreOwner) {
+			if(ignoreOwner || IERC721(_claimNFT).ownerOf(serials[i]) == msg.sender) {
 				uint startTime;
 				uint elapsedUnits;
 				// check when serial last claimed

@@ -67,7 +67,7 @@ const main = async () => {
 
 	// 498, 98, 495, 494, 493, 491, 490, 489, 488 , 482, 481
 	// 484, 485, 486, 487, 488, 489, 490, 491, 492
-	const queryResult = await checkClaimable('getClaimableAmount', [3, 4, 5, 6]);
+	const queryResult = await checkClaimable('getClaimableForTokens', [3, 4, 5, 6, 100, 101, 484, 485, 486, 487, 488, 489, 490, 491, 492]);
 	console.log('Claimable:', Number(queryResult['amt']));
 };
 
@@ -81,9 +81,10 @@ const main = async () => {
 // eslint-disable-next-line no-unused-vars
 async function checkClaimable(fcnName, ints) {
 	const gasLim = 50000 + 10000 * (ints.length - 1);
+	const queryCost = new Hbar(0.002 * ints.length);
 	const params = new ContractFunctionParameters().addUint256Array(ints);
 
-	return await contractExecuteQuery(contractId, gasLim, fcnName, params);
+	return await contractExecuteQuery(contractId, gasLim, fcnName, params, queryCost);
 }
 
 /**
@@ -94,11 +95,12 @@ async function checkClaimable(fcnName, ints) {
  * @param {ContractFunctionParameters} params the function arguments
  * @returns {[TransactionReceipt, any, TransactionRecord]} the transaction receipt and any decoded results
  */
-async function contractExecuteQuery(cId, gasLim, fcnName, params) {
+async function contractExecuteQuery(cId, gasLim, fcnName, params, queryCost = new Hbar(0.001)) {
 	const contractCall = await new ContractCallQuery()
 		.setContractId(cId)
 		.setGas(gasLim)
 		.setFunction(fcnName, params)
+		.setQueryPayment(queryCost)
 		.execute(client);
 
 	return decodeFunctionResult(fcnName, contractCall.bytes);
