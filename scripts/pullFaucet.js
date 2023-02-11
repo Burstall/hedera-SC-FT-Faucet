@@ -44,7 +44,7 @@ const main = async () => {
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
 
-	const proceed = readlineSync.keyInYNStrict('Do you want to pull the faucet for serials: ' + serials + '?');
+	const proceed = readlineSync.keyInYNStrict('Do you want to pull the faucet for serial(s): ' + serials + '?');
 	if (!proceed) {
 		console.log('User Aborted');
 		return;

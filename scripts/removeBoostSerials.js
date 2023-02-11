@@ -4,6 +4,7 @@ const {
 	PrivateKey,
 	ContractId,
 	Hbar,
+	ContractExecuteTransaction,
 	ContractCallQuery,
 	ContractFunctionParameters,
 } = require('@hashgraph/sdk');
@@ -28,7 +29,7 @@ let client;
 const main = async () => {
 	const args = process.argv.slice(2);
 	if (args.length != 1 || getArgFlag('h')) {
-		console.log('Usage: checkClaimableAmount.js X,Y,Z');
+		console.log('Usage: removeBoostSerials.js X,Y,Z');
 		console.log('		X,Y,Z are the serials to claim');
 		return;
 	}
@@ -40,19 +41,8 @@ const main = async () => {
 		return;
 	}
 
-	if (getArgFlag('h')) {
-		console.log('Usage: pullFaucet.js -[eth|hts]');
-		return;
-	}
-
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
-
-	const proceed = readlineSync.keyInYNStrict('Do you want to check claimable balance for serial(s): ' + serials + '?');
-	if (!proceed) {
-		console.log('User Aborted');
-		return;
-	}
 
 	if (env.toUpperCase() == 'TEST') {
 		client = Client.forTestnet();
@@ -74,9 +64,20 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	// get the claimable amount
-	const queryResult = await checkClaimable('getClaimableForTokens', serials);
-	console.log('Claimable:', Number(queryResult['amt']));
+	let intArraySerials = await getSetting('getBoostSerials', 'boostSerials');
+	console.log('Current Boost Serials:', intArraySerials);
+
+	const proceed = readlineSync.keyInYNStrict('Do you want to **REMOVE** boost to serial(s): ' + serials + '?');
+	if (!proceed) {
+		console.log('User Aborted');
+		return;
+	}
+
+	const [status] = await useSetterUint256Array('removeBoostSerials', serials);
+	console.log('Operation:', status);
+
+	intArraySerials = await getSetting('getBoostSerials', 'boostSerials');
+	console.log('Updated Boost Serials:', intArraySerials);
 };
 
 
@@ -87,13 +88,14 @@ const main = async () => {
  * @returns {string}
  */
 // eslint-disable-next-line no-unused-vars
-async function checkClaimable(fcnName, ints) {
-	const gasLim = 50000 + 10000 * (ints.length - 1);
-	const queryCost = new Hbar(0.002 * ints.length);
+async function useSetterUint256Array(fcnName, ints) {
+	const gasLim = 220000;
 	const params = new ContractFunctionParameters().addUint256Array(ints);
 
-	return await contractExecuteQuery(contractId, gasLim, fcnName, params, queryCost);
+	const [setterIntArrayRx, setterResult] = await contractExecuteFcn(contractId, gasLim, fcnName, params);
+	return [setterIntArrayRx.status.toString(), setterResult];
 }
+
 
 /**
  * Helper function for calling the contract methods
@@ -101,17 +103,22 @@ async function checkClaimable(fcnName, ints) {
  * @param {number | Long.Long} gasLim the max gas
  * @param {string} fcnName name of the function to call
  * @param {ContractFunctionParameters} params the function arguments
+ * @param {string | number | Hbar | Long.Long | BigNumber} amountHbar the amount of hbar to send in the methos call
  * @returns {[TransactionReceipt, any, TransactionRecord]} the transaction receipt and any decoded results
  */
-async function contractExecuteQuery(cId, gasLim, fcnName, params, queryCost = new Hbar(0.001)) {
-	const contractCall = await new ContractCallQuery()
+async function contractExecuteFcn(cId, gasLim, fcnName, params, amountHbar) {
+	const contractExecuteTx = await new ContractExecuteTransaction()
 		.setContractId(cId)
 		.setGas(gasLim)
 		.setFunction(fcnName, params)
-		.setQueryPayment(queryCost)
+		.setPayableAmount(amountHbar)
 		.execute(client);
 
-	return decodeFunctionResult(fcnName, contractCall.bytes);
+	// get the results of the function call;
+	const record = await contractExecuteTx.getRecord(client);
+	const contractResults = decodeFunctionResult(fcnName, record.contractFunctionResult.bytes);
+	const contractExecuteRx = await contractExecuteTx.getReceipt(client);
+	return [contractExecuteRx, contractResults, record];
 }
 
 /**
@@ -130,7 +137,7 @@ async function getSetting(fcnName, expectedVar) {
 	const contractCall = await new ContractCallQuery()
 		.setContractId(contractId)
 		.setFunctionParameters(functionCallAsUint8Array)
-		.setQueryPayment(new Hbar(0.1))
+		.setMaxQueryPayment(new Hbar(2))
 		.setGas(100000)
 		.execute(client);
 	const queryResult = await decodeFunctionResult(fcnName, contractCall.bytes);
