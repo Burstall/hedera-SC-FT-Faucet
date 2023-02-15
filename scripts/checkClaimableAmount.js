@@ -26,13 +26,17 @@ let client;
 
 // check-out the deployed script - test read-only method
 const main = async () => {
-	if (contractName === undefined || contractName == null) {
-		console.log('Environment required, please specify CONTRACT_NAME for ABI in the .env file');
+	const args = process.argv.slice(2);
+	if (args.length != 1 || getArgFlag('h')) {
+		console.log('Usage: checkClaimableAmount.js X,Y,Z');
+		console.log('		X,Y,Z are the serials to claim');
 		return;
 	}
 
-	if (getArgFlag('h')) {
-		console.log('Usage: pullFaucet.js -[eth|hts]');
+	const serials = args[0].split(',');
+
+	if (contractName === undefined || contractName == null) {
+		console.log('Environment required, please specify CONTRACT_NAME for ABI in the .env file');
 		return;
 	}
 
@@ -65,9 +69,7 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	// 498, 98, 495, 494, 493, 491, 490, 489, 488 , 482, 481
-	// 484, 485, 486, 487, 488, 489, 490, 491, 492
-	const queryResult = await checkClaimable('getClaimableForTokens', [3, 4, 5, 6, 100, 101, 484, 485, 486, 487, 488, 489, 490, 491, 492]);
+	const queryResult = await checkClaimable('getClaimableForTokens', serials);
 	console.log('Claimable:', Number(queryResult['amt']));
 };
 
@@ -81,7 +83,7 @@ const main = async () => {
 // eslint-disable-next-line no-unused-vars
 async function checkClaimable(fcnName, ints) {
 	const gasLim = 50000 + 10000 * (ints.length - 1);
-	const queryCost = new Hbar(0.002 * ints.length);
+	const queryCost = new Hbar(0.06 * ints.length);
 	const params = new ContractFunctionParameters().addUint256Array(ints);
 
 	return await contractExecuteQuery(contractId, gasLim, fcnName, params, queryCost);
