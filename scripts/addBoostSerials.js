@@ -29,7 +29,7 @@ let client;
 const main = async () => {
 	const args = process.argv.slice(2);
 	if (args.length != 1 || getArgFlag('h')) {
-		console.log('Usage: pullFaucet.js X,Y,Z');
+		console.log('Usage: addBoostSerials.js X,Y,Z');
 		console.log('		X,Y,Z are the serials to claim');
 		return;
 	}
@@ -43,12 +43,6 @@ const main = async () => {
 
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
-
-	const proceed = readlineSync.keyInYNStrict('Do you want to pull the faucet for serial(s): ' + serials + '?');
-	if (!proceed) {
-		console.log('User Aborted');
-		return;
-	}
 
 	if (env.toUpperCase() == 'TEST') {
 		client = Client.forTestnet();
@@ -70,8 +64,20 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	const [, uintAmtClaim] = await useSetterUint256Array('pullFaucetHTS', serials);
-	console.log('Claimed:', Number(uintAmtClaim[0]));
+	let intArraySerials = await getSetting('getBoostSerials', 'boostSerials');
+	console.log('Current Boost Serials:', intArraySerials);
+
+	const proceed = readlineSync.keyInYNStrict('Do you want to **ADD** boost to serial(s): ' + serials + '?');
+	if (!proceed) {
+		console.log('User Aborted');
+		return;
+	}
+
+	const [status] = await useSetterUint256Array('addBoostSerials', serials);
+	console.log('Operation:', status);
+
+	intArraySerials = await getSetting('getBoostSerials', 'boostSerials');
+	console.log('Updated Boost Serials:', intArraySerials);
 };
 
 
