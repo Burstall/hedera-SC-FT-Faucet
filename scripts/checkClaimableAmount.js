@@ -42,6 +42,7 @@ const main = async () => {
 
 	console.log('\n-Using ENIVRONMENT:', env);
 	console.log('\n-Using Operator:', operatorId.toString());
+	console.log('\n-Using Contract:', contractId.toString());
 
 	const proceed = readlineSync.keyInYNStrict('Do you want to check claimable balance for serial(s): ' + serials + '?');
 	if (!proceed) {
