@@ -60,14 +60,18 @@ const main = async () => {
 
 	let blockNumber = await web3.eth.getBlockNumber() - 900;
 	let lastPrintedBlockNumber = blockNumber;
+	const hashQueue = [];
 	while (true) {
 		try {
 			const events = await contract.getPastEvents(eventName, { fromBlock: blockNumber, toBlock: 'latest' });
 			if (events.length > 0) {
-				const hashList = [];
 				for (const event of events) {
-					if (!hashList.includes(event.returnValues.hash)) {
-						hashList.push(event.returnValues.hash);
+					if (!hashQueue.includes(event.returnValues.hash)) {
+						// limit the array to 500 hashes to prevent memory issues
+						if (hashQueue.length == 500) {
+							hashQueue.shift();
+						}
+						hashQueue.push(event.returnValues.hash);
 						const outputStr = event.transactionHash + ' : '
 							+ event.returnValues.msgType + ' : '
 							+ AccountId.fromSolidityAddress(event.returnValues.fromAddress).toString()
@@ -81,7 +85,7 @@ const main = async () => {
 			await sleep(2000);
 		}
 		catch (error) {
-			console.log(error);
+			if (!(error.message == 'Invalid JSON RPC response' || error.name == 'Invalid JSON RPC response')) console.log(error);
 			await sleep(30000);
 		}
 		if (blockNumber > (lastPrintedBlockNumber + 500)) {
