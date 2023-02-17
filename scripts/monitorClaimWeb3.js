@@ -66,12 +66,12 @@ const main = async () => {
 			const events = await contract.getPastEvents(eventName, { fromBlock: blockNumber, toBlock: 'latest' });
 			if (events.length > 0) {
 				for (const event of events) {
-					if (!hashQueue.includes(event.returnValues.hash)) {
+					if (!hashQueue.includes(event.transactionHash)) {
 						// limit the array to 500 hashes to prevent memory issues
 						if (hashQueue.length == 500) {
 							hashQueue.shift();
 						}
-						hashQueue.push(event.returnValues.hash);
+						hashQueue.push(event.transactionHash);
 						const outputStr = event.transactionHash + ' : '
 							+ event.returnValues.msgType + ' : '
 							+ AccountId.fromSolidityAddress(event.returnValues.fromAddress).toString()
@@ -85,7 +85,7 @@ const main = async () => {
 			await sleep(2000);
 		}
 		catch (error) {
-			if (!(error.message == 'Invalid JSON RPC response' || error.name == 'Invalid JSON RPC response')) console.log(error);
+			if (!(error.name == 'Invalid JSON RPC response' || error.name == 'CONNECTION ERROR')) console.log(error);
 			await sleep(30000);
 		}
 		if (blockNumber > (lastPrintedBlockNumber + 500)) {
