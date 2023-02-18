@@ -85,7 +85,9 @@ const main = async () => {
 			await sleep(2000);
 		}
 		catch (error) {
-			if (!(error.name == 'Invalid JSON RPC response' || error.name == 'CONNECTION ERROR')) console.log(error);
+			if (!(error.message.includes('Invalid JSON RPC response') || error.message.includes('CONNECTION ERROR'))) {
+				console.log(error.name, '<->', error.message);
+			}
 			await sleep(30000);
 		}
 		if (blockNumber > (lastPrintedBlockNumber + 500)) {
