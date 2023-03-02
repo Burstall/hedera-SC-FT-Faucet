@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "deploy": "npx hardhat run scripts/deploy.js",
-	"test": "npx hardhat test",
+    "test": "npx hardhat test",
     "logs": "node scripts/getContractLogs.js",
     "solhint": "solhint -f table contracts/*.sol"
   },
@@ -17,6 +17,8 @@
     "abi-decoder": "^2.4.0",
     "axios": "^1.2.0",
     "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
+    "node-cron": "^3.0.2",
     "readline-sync": "^1.4.10"
   },
   "devDependencies": {
