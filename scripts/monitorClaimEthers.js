@@ -111,9 +111,8 @@ async function contextAwareFetchLogsFromMirror() {
 				return;
 			});
 	}
-	console.log('New block number:', newBlocknumber);
-	console.log('Last processed block number:', lastProcessedBlocknumber);
-	// trying to avoid missing any events
+	// console.log('New block number:', newBlocknumber);
+	// console.log('Last processed block number:', lastProcessedBlocknumber);
 	lastProcessedBlocknumber = newBlocknumber;
 }
 
