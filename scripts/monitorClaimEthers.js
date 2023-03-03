@@ -14,7 +14,7 @@ const contractId = ContractId.fromString(process.env.CONTRACT_ID);
 const BASEURL_MAIN = 'https://mainnet-public.mirrornode.hedera.com';
 const BASEURL_TEST = 'https://testnet.mirrornode.hedera.com';
 
-let lastTimestamp = (new Date().getTime() / 1000);
+let lastProcessedBlocknumber = process.env.LAST_PROCESSED_BLOCKNUMBER ? Number(process.env.LAST_PROCESSED_BLOCKNUMBER) : 0;
 
 const env = process.env.ENVIRONMENT ?? null;
 
@@ -62,8 +62,8 @@ const main = async () => {
 };
 
 async function contextAwareFetchLogsFromMirror() {
-	const newTimestamp = new Date().getTime() / 1000;
-	let url = `${baseUrl}/api/v1/contracts/${contractId.toString()}/results/logs?order=desc&limit=100`;
+	let url = `${baseUrl}/api/v1/contracts/${contractId.toString()}/results/logs?order=desc&limit=10`;
+	let newBlocknumber = lastProcessedBlocknumber;
 	while (url) {
 		// console.log(url);
 
@@ -71,10 +71,9 @@ async function contextAwareFetchLogsFromMirror() {
 			.then(function(response) {
 				const jsonResponse = response.data;
 				// console.log(' -Got', jsonResponse, 'events from mirror node');
-
 				const validLogs = jsonResponse.logs.filter(function(log) {
-					// console.log('log.timestamp', Number(log.timestamp), 'lastTimestamp', lastTimestamp, Number(log.timestamp) > lastTimestamp);
-					if (Number(log.timestamp) > lastTimestamp) return true;
+					// console.log(Number(log.block_number), lastProcessedBlocknumber);
+					if (Number(log.block_number) > lastProcessedBlocknumber) return true;
 					else return false;
 				});
 
@@ -94,6 +93,9 @@ async function contextAwareFetchLogsFromMirror() {
 						+ AccountId.fromSolidityAddress(event.args.fromAddress).toString()
 						+ ' -> ' + AccountId.fromSolidityAddress(event.args.toAddress).toString() + ' : '
 						+ event.args.amount * Math.pow(10, -DECIMALS) + ' @ ' + new Date(event.args.timestamp * 1000).toLocaleString());
+
+					// console.log(Number(log.block_number), newBlocknumber);
+					newBlocknumber = Number(log.block_number) > newBlocknumber ? Number(log.block_number) : newBlocknumber;
 				});
 
 				if (validLogs.length == jsonResponse.logs.length) {
@@ -109,8 +111,10 @@ async function contextAwareFetchLogsFromMirror() {
 				return;
 			});
 	}
+	console.log('New block number:', newBlocknumber);
+	console.log('Last processed block number:', lastProcessedBlocknumber);
 	// trying to avoid missing any events
-	lastTimestamp = newTimestamp;
+	lastProcessedBlocknumber = newBlocknumber;
 }
 
 /**
