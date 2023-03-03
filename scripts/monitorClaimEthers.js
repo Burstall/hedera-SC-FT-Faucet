@@ -12,9 +12,9 @@ const DECIMALS = process.env.DECIMALS ?? 0;
 
 const contractId = ContractId.fromString(process.env.CONTRACT_ID);
 const BASEURL_MAIN = 'https://mainnet-public.mirrornode.hedera.com';
-const BASEURL_TEST = 'http://testnet.mirrornode.hedera.com';
+const BASEURL_TEST = 'https://testnet.mirrornode.hedera.com';
 
-let lastTimestamp = new Date().getTime();
+let lastTimestamp = (new Date().getTime() / 1000);
 
 const env = process.env.ENVIRONMENT ?? null;
 
@@ -57,11 +57,12 @@ const main = async () => {
 
 	iface = new ethers.utils.Interface(abi);
 
+	console.log('\n -Starting event monitor...\n');
 	// await contextAwareFetchLogsFromMirror();
 };
 
 async function contextAwareFetchLogsFromMirror() {
-	const newTimestamp = new Date().getTime();
+	const newTimestamp = new Date().getTime() / 1000;
 	let url = `${baseUrl}/api/v1/contracts/${contractId.toString()}/results/logs?order=desc&limit=100`;
 	while (url) {
 		// console.log(url);
@@ -72,9 +73,12 @@ async function contextAwareFetchLogsFromMirror() {
 				// console.log(' -Got', jsonResponse, 'events from mirror node');
 
 				const validLogs = jsonResponse.logs.filter(function(log) {
-					if (log.timestamp > lastTimestamp) return true;
+					// console.log('log.timestamp', Number(log.timestamp), 'lastTimestamp', lastTimestamp, Number(log.timestamp) > lastTimestamp);
+					if (Number(log.timestamp) > lastTimestamp) return true;
 					else return false;
 				});
+
+				// console.log(' -Got', validLogs.length, 'events from mirror node');
 
 				validLogs.forEach(log => {
 					// decode the event data
@@ -100,7 +104,7 @@ async function contextAwareFetchLogsFromMirror() {
 				}
 			})
 			.catch(function(err) {
-				console.error(err);
+				console.error(new Date().toISOString(), 'Error fetching logs from mirror node', url, err.name, err.message);
 				url = null;
 				return;
 			});
