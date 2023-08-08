@@ -58,7 +58,8 @@ const main = async () => {
 	const encodedCommand = iface.encodeFunctionData('getClaimableForTokens', [serials]);
 	console.log('encodedCommand:', encodedCommand);
 
-	await readOnlyEVMFromMirrorNode(encodedCommand, operatorId);
+	const data = await readOnlyEVMFromMirrorNode(encodedCommand, operatorId, false);
+	console.log('data:', ethers.utils.formatUnits(data.result, 8));
 };
 
 async function readOnlyEVMFromMirrorNode(data, from, estimate = true) {
@@ -76,7 +77,7 @@ async function readOnlyEVMFromMirrorNode(data, from, estimate = true) {
 	const url = `${baseUrl}/api/v1/contracts/call`;
 
 	const response = await axios.post(url, body);
-	console.log(response.data);
+	return response.data;
 }
 
 function getArgFlag(arg) {
