@@ -84,7 +84,7 @@ async function readOnlyEVMFromMirrorNode(data, from, estimate = true) {
 	catch (error) {
 		console.log(error.response.data?._status?.messages[0]?.message, error.response.data?._status?.messages[0]?.data);
 		console.log(parseError(error.response.data?._status?.messages[0]?.data));
-		
+
 		// if user supplied a private key in .env file offer them chance to pay to query
 		if (process.env?.PRIVATE_KEY) {
 			const proceed = readlineSync.keyInYNStrict('Do you want to check claimable balance for serial(s): ' + serials + '?');
@@ -106,8 +106,8 @@ async function readOnlyEVMFromMirrorNode(data, from, estimate = true) {
 					process.exit(1);
 				}
 				client.setOperator(operatorId, pk);
-				const results = await contractExecuteQuery(contractId, client, 300_000, 'getClaimableForTokens', [serials], null, 'amt');
-				return { result: results[0]}
+				const results = await contractExecuteQuery(client, 300_000, 'getClaimableForTokens', [serials], null, 'amt');
+				return { result: results[0] };
 			}
 			else {
 				console.log('User Aborted');
@@ -191,7 +191,6 @@ function parseError(errorData) {
 
 /**
  * Helper function for calling the contract methods
- * @param {ContractId} contractId the contract to call
  * @param {Client} client the client to use for execution
  * @param {number | Long.Long} gasLim the max gas
  * @param {string} fcnName name of the function to call
@@ -199,7 +198,7 @@ function parseError(errorData) {
  * @param {Hbar | null} queryCost the cost of the query - nullable
  * @returns {[TransactionReceipt, any, TransactionRecord]} the transaction receipt and any decoded results
  */
-async function contractExecuteQuery(contractId, client, gasLim, fcnName, params, queryCost, ...expectedVars) {
+async function contractExecuteQuery(client, gasLim, fcnName, params, queryCost, ...expectedVars) {
 	// check the gas lim is a numeric value else 100_000
 	if (!gasLim || isNaN(gasLim)) {
 		gasLim = 100_000;
