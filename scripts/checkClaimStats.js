@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const { ContractId, AccountId } = require('@hashgraph/sdk');
-const { ethers } = require('ethers');
+const ethers = require('ethers');
 const axios = require('axios');
 let abi, iface, baseUrl;
 
@@ -45,7 +45,7 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	iface = new ethers.utils.Interface(abi);
+	iface = new ethers.Interface(abi);
 
 	await contextAwareFetchLogsFromMirror();
 };
@@ -78,7 +78,7 @@ async function contextAwareFetchLogsFromMirror() {
 					}
 					const event = iface.parseLog({ topics: log.topics, data: log.data });
 
-					const fromAddress = AccountId.fromSolidityAddress(event.args.toAddress).toString();
+					const fromAddress = AccountId.fromEvmAddress(0, 0, event.args.toAddress).toString();
 
 					statsObj.totalClaims++;
 					statsObj.totalTokensClaimed += Math.floor(event.args.amount * Math.pow(10, -DECIMALS));

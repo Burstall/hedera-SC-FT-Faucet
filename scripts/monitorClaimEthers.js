@@ -1,7 +1,7 @@
 require('dotenv').config();
 const fs = require('fs');
 const { ContractId, AccountId } = require('@hashgraph/sdk');
-const { ethers } = require('ethers');
+const ethers = require('ethers');
 const axios = require('axios');
 const cron = require('node-cron');
 let abi, iface, baseUrl;
@@ -55,7 +55,7 @@ const main = async () => {
 	abi = json.abi;
 	console.log('\n -Loading ABI...\n');
 
-	iface = new ethers.utils.Interface(abi);
+	iface = new ethers.Interface(abi);
 
 	console.log('\n -Starting event monitor...\n');
 	// await contextAwareFetchLogsFromMirror();
@@ -90,9 +90,9 @@ async function contextAwareFetchLogsFromMirror() {
 						+ ' : Tx Hash: ' + log.transaction_hash
 						+ ' : Event: ' + event.name + ' : '
 						+ event.args.msgType + ' : '
-						+ AccountId.fromSolidityAddress(event.args.fromAddress).toString()
-						+ ' -> ' + AccountId.fromSolidityAddress(event.args.toAddress).toString() + ' : '
-						+ event.args.amount * Math.pow(10, -DECIMALS) + ' @ ' + new Date(event.args.timestamp * 1000).toLocaleString());
+						+ AccountId.fromEvmAddress(0, 0, event.args.fromAddress).toString()
+						+ ' -> ' + AccountId.fromEvmAddress(0, 0, event.args.toAddress).toString() + ' : '
+						+ Number(event.args.amount) * Math.pow(10, -DECIMALS) + ' @ ' + new Date(Number(event.args.timestamp) * 1000).toLocaleString());
 
 					// console.log(Number(log.block_number), newBlocknumber);
 					newBlocknumber = Number(log.block_number) > newBlocknumber ? Number(log.block_number) : newBlocknumber;
