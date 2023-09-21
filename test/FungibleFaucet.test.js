@@ -120,11 +120,11 @@ describe('Deployment: ', function() {
 		console.log('\n-Testing:', contractName);
 
 		// send 1 hbar to the contract.
-		await hbarTransferFcn(operatorId, operatorKey, contractId, 5);
+		await hbarTransferFcn(operatorId, operatorKey, AccountId.fromEvmAddress(0, 0, contractAddress), 5);
 
 		// set allowance for the contract for the FT
 		client.setOperator(aliceId, alicePK);
-		await setFungibleAllowance(contractId, aliceId, 5000);
+		await setFungibleAllowance(AccountId.fromEvmAddress(0, 0, contractAddress), aliceId, 5000);
 
 		// create Bob account
 		client.setOperator(operatorId, operatorKey);
@@ -248,7 +248,7 @@ describe('Access Checks: ', function() {
 		client.setOperator(aliceId, alicePK);
 		// get FT SCT
 		const addressSCT = await getSetting('getSCT', 'sct');
-		expect(AccountId.fromSolidityAddress(addressSCT).toString() == aliceId.toString()).to.be.true;
+		expect(AccountId.fromEvmAddress(0, 0, addressSCT).toString() == aliceId.toString()).to.be.true;
 
 		// get FT
 		const addressFungible = await getSetting('getFungibleToken', 'fungible');
@@ -598,8 +598,8 @@ async function mintNFT() {
 		.setInitialSupply(0)
 		.setMaxSupply(10)
 		.setSupplyType(TokenSupplyType.Finite)
-		.setTreasuryAccountId(AccountId.fromString(operatorId))
-		.setAutoRenewAccountId(AccountId.fromString(operatorId))
+		.setTreasuryAccountId(operatorId)
+		.setAutoRenewAccountId(operatorId)
 		.setSupplyKey(operatorKey)
 		.setMaxTransactionFee(new Hbar(50, HbarUnit.Hbar));
 
@@ -683,12 +683,12 @@ async function getAccountBalance(acctId) {
  * @param {*} amount amount of allowance to set
  */
 async function setFungibleAllowance(spenderAcct, ownerAcct, amount) {
-	const ctrcttAsAccount = AccountId.fromString(spenderAcct.toString());
+	// const ctrcttAsAccount = spenderAcct.toString();
 	console.log('Set approval\nToken:', tokenId.toString());
-	console.log('Spender:', spenderAcct.toString(), ctrcttAsAccount.toString());
+	console.log('Spender:', spenderAcct.toString(), contractId.toString());
 	console.log('Owner:', ownerAcct.toString(), aliceId.toString());
 	const transaction = new AccountAllowanceApproveTransaction()
-		.approveTokenAllowance(tokenId, ownerAcct, ctrcttAsAccount, amount)
+		.approveTokenAllowance(tokenId, ownerAcct, spenderAcct, amount)
 		.freezeWith(client);
 
 	const txResponse = await transaction.execute(client);
